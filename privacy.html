@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>拼好图-隐私说明</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* 移除了隐私说明页面特有的样式，使用与其他页面相同的样式 */
+    </style>
+</head>
+<body class="privacy-page">
+    <!-- 顶部导航栏 -->
+    <div class="nav-links">
+        <div class="nav-toggle" id="navToggle">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+        <div class="nav-menu" id="navMenu">
+            <a href="index.html">图片合成</a>
+            <a href="encrypt.html">图片加密</a>
+            <a href="privacy.html" class="active">隐私说明</a>
+        </div>
+    </div>
+    
+    <div class="container">
+        
+        <div class="layout-grid">
+            <!-- 左侧面板：目录区域 -->
+            <div class="left-panel">
+                <h2>目录</h2>
+                <ul id="toc-list">
+                    <!-- 目录将通过JavaScript动态生成 -->
+                </ul>
+            </div>
+            
+            <!-- 右侧面板：内容区域 -->
+            <div class="right-panel">
+                <h1>隐私说明</h1>
+                <h2 id="data-collection">数据收集</h2>
+                <p>拼好图是一个纯前端的网页应用，所有处理都在您的浏览器中完成，无需上传任何图片到服务器。我们不会收集、存储或传输您的个人数据和图片信息。</p>
+                
+                <h2 id="data-storage">数据存储</h2>
+                <p>您的所有图片处理都在本地浏览器中进行，不会存储在任何服务器上。我们不会保存您的图片或个人数据。</p>
+                
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 页面加载完成后自动生成目录
+        document.addEventListener('DOMContentLoaded', function() {
+            // 获取所有h2标题
+            const headings = document.querySelectorAll('.right-panel h2');
+            const tocList = document.getElementById('toc-list');
+            
+            // 为每个标题生成目录项
+            headings.forEach(heading => {
+                // 创建目录项
+                const listItem = document.createElement('li');
+                const link = document.createElement('a');
+                
+                // 设置链接属性
+                link.href = '#' + heading.id;
+                link.textContent = heading.textContent;
+                
+                // 添加到目录列表
+                listItem.appendChild(link);
+                tocList.appendChild(listItem);
+            });
+        });
+
+        // 汉堡菜单交互
+        const navToggle = document.getElementById('navToggle');
+        const navMenu = document.getElementById('navMenu');
+
+        navToggle.addEventListener('click', () => {
+            navMenu.classList.toggle('active');
+            navToggle.classList.toggle('active');
+        });
+
+        // 点击菜单项后关闭菜单
+        const navLinks = document.querySelectorAll('.nav-menu a');
+        navLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                navMenu.classList.remove('active');
+                navToggle.classList.remove('active');
+            });
+        });
+    </script>
+    
+    <!-- 底部GitHub链接 -->
+    <footer style="text-align: center; padding: 20px; margin-top: 20px;">
+        <a href="https://github.com/FQkun/pinhaotu" target="_blank">GitHub地址</a>
+    </footer>
+</body>
+</html>
