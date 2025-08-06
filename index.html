@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="max-age=86400">
+    <title>拼好图-图片合成</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="js/protect.js"></script>
+</head>
+<body>
+    <!-- 顶部导航栏 -->
+    <div class="nav-links">
+        <div class="nav-toggle" id="navToggle">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+        <div class="nav-menu" id="navMenu">
+            <a href="index.html" class="active">图片合成</a>
+            <a href="encrypt.html">图片加密</a>
+            <a href="privacy.html">隐私说明</a>
+            <a href="about.html">关于</a>
+        </div>
+    </div>
+    
+    <div class="container">
+        
+        <div class="layout-grid">
+            <!-- 左侧面板：上传和控制区域 -->
+            <div class="left-panel">
+                <!-- 上传区域 -->
+                 <h1>图片合成工具</h1>
+                <div class="upload-area">
+                    <input type="file" id="imageInput" multiple accept="image/*">
+                    <label for="imageInput" class="button">点击选择图片</label> <!-- 自定义上传按钮 -->
+                    <p class="drag-hint">或将图片拖拽至此区域</p>
+                </div>
+
+                <!-- 操作控件 -->
+                <div class="controls">
+                    <!-- 新增滤镜选择框 -->
+                    <select id="filterSelect"> 
+                        <option value="multiply" selected>扣黑色</option>
+                        <option value="screen">扣白色</option>
+                    </select>
+                    <button id="invertColor" class="button">颜色反转</button>
+                </div>
+            </div>
+
+            <!-- 右侧面板：结果展示区域 -->
+            <div class="right-panel">
+                <!-- 结果展示 -->
+                <div class="canvas-container">
+                    <h3>合并结果：</h3>
+                    <canvas id="resultCanvas"></canvas>
+                    <button id="downloadBtn" style="margin-top: 10px; display: none;" class="button">下载合成图片</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    const input = document.getElementById('imageInput');
+    const resultCanvas = document.getElementById('resultCanvas');
+    const ctx = resultCanvas.getContext('2d');
+    const thresholdSelect = document.getElementById('thresholdSelect'); // 获取下拉框
+    let layers = []; 
+
+    // 读取上传的图片（自动扣黑色）
+    input.addEventListener('change', (e) => {
+        const files = e.target.files;
+        handleFiles(files);
+    });
+    
+    // 更新颜色反转按钮状态
+    function updateInvertColorButtonState() {
+        const invertColorBtn = document.getElementById('invertColor');
+        if (layers.length > 0) {
+            invertColorBtn.disabled = false;
+        } else {
+            invertColorBtn.disabled = true;
+        }
+    }
+    
+    // 处理拖拽的文件
+    function handleFiles(files) {
+        for (const file of files) {
+            const img = new Image();
+            img.src = URL.createObjectURL(file);
+            img.onload = () => {
+                // 自动执行黑色扣色
+                const processedImage = chromaKey({ 
+                    image: img,
+                    width: img.width,
+                    height: img.height 
+                }, 'black');
+                
+                layers.push({ 
+                    image: processedImage,
+                    width: img.width,
+                    height: img.height 
+                });
+                URL.revokeObjectURL(img.src);
+                
+                // 更新颜色反转按钮状态
+                updateInvertColorButtonState();
+                
+                // 上传成功后显示功能区（添加渐变效果）
+                document.querySelector('.controls').classList.add('active');
+                mergeLayers(); 
+            };
+        }
+    }
+    
+    // 拖拽上传功能
+    const uploadArea = document.querySelector('.upload-area');
+    
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    });
+    
+    uploadArea.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+    });
+    
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            handleFiles(files);
+        }
+    });
+
+    // 扣色函数（type: 'black'/'white'）
+    function chromaKey(layer, type) {
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d');
+        
+        tempCanvas.width = layer.width;
+        tempCanvas.height = layer.height;
+        tempCtx.drawImage(layer.image, 0, 0);
+        
+        const imageData = tempCtx.getImageData(0, 0, layer.width, layer.height);
+        const data = imageData.data;
+        // 使用下拉框值作为阈值
+        const threshold = parseInt(thresholdSelect.value); 
+
+        for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i+1];
+            const b = data[i+2];
+            
+            // 判断是否接近目标颜色
+            const isTarget = type === 'black' 
+                ? (r < threshold && g < threshold && b < threshold)
+                : (r > 255 - threshold && g > 255 - threshold && b > 255 - threshold);
+            
+            if (isTarget) {
+                data[i+3] = 0; // 设置透明度为0（透明）
+            }
+        }
+        
+        tempCtx.putImageData(imageData, 0, 0);
+        return tempCanvas;
+    }
+
+    // 颜色反转函数 (优化版本 - 使用位运算)
+    function invertColors(layer) {
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d');
+        
+        tempCanvas.width = layer.width;
+        tempCanvas.height = layer.height;
+        tempCtx.drawImage(layer.image, 0, 0);
+        
+        const imageData = tempCtx.getImageData(0, 0, layer.width, layer.height);
+        const data = imageData.data;
+
+        // 使用位运算优化颜色反转 (255 - x 等价于 255 ^ x)
+        for (let i = 0; i < data.length; i += 4) {
+            data[i] = 255 ^ data[i];     // R
+            data[i+1] = 255 ^ data[i+1]; // G
+            data[i+2] = 255 ^ data[i+2]; // B
+        }
+        
+        tempCtx.putImageData(imageData, 0, 0);
+        return tempCanvas;
+    }
+
+    // 合并图层
+    // 读取上传的图片（直接保存原始图片）
+    input.addEventListener('change', async (e) => {
+        showLoading(); 
+        const files = e.target.files;
+        
+        for (const file of files) {
+            const img = new Image();
+            img.src = URL.createObjectURL(file);
+            await new Promise(resolve => {
+                img.onload = () => {
+                    layers.push({ 
+                        image: img,  // 直接保存原始图片
+                        width: img.width,
+                        height: img.height 
+                    });
+                    URL.revokeObjectURL(img.src);
+                    resolve();
+                };
+            });
+        }
+    
+        document.querySelector('.controls').classList.add('active');
+        mergeLayers(); 
+        hideLoading(); 
+        
+        // 更新颜色反转按钮状态
+        updateInvertColorButtonState();
+        
+        // 新增：自动触发颜色反转按钮点击
+        document.getElementById('invertColor').click();
+    });
+    
+    // 合并图层（应用滤镜混合模式）
+    function mergeLayers() {
+        const downloadBtn = document.getElementById('downloadBtn');
+        
+        if (layers.length === 0) {
+            // 没有图层时隐藏下载按钮
+            downloadBtn.style.display = 'none';
+            return;
+        }
+        
+        // 有图层时显示下载按钮
+        downloadBtn.style.display = 'block';
+        
+        // 根据上传图片的实际大小确定canvas尺寸，不设置最大限制
+        const maxWidth = Math.max(...layers.map(l => l.width));
+        const maxHeight = Math.max(...layers.map(l => l.height));
+        resultCanvas.width = maxWidth;
+        resultCanvas.height = maxHeight;
+        ctx.clearRect(0, 0, maxWidth, maxHeight);
+    
+        // 获取选择的滤镜类型
+        const filterType = document.getElementById('filterSelect').value;
+        ctx.globalCompositeOperation = filterType;  // 设置混合模式
+    
+        // 按顺序绘制图层（后上传的在顶层）
+        layers.forEach(layer => {
+            // 计算缩放比例以适应canvas
+            const scale = Math.min(maxWidth / layer.width, maxHeight / layer.height);
+            const drawWidth = layer.width * scale;
+            const drawHeight = layer.height * scale;
+            const x = (maxWidth - drawWidth) / 2;
+            const y = (maxHeight - drawHeight) / 2;
+            
+            ctx.drawImage(layer.image, x, y, drawWidth, drawHeight);
+        });
+        
+        ctx.globalCompositeOperation = 'source-over';  // 恢复默认混合模式
+    }
+    
+    // 监听滤镜选择框变化事件
+    document.getElementById('filterSelect').addEventListener('change', () => {
+        mergeLayers();  // 切换滤镜时重新合并
+    });
+
+    // 事件绑定
+    // 创建Web Worker处理耗时操作
+    const imageWorker = new Worker(URL.createObjectURL(new Blob([`
+    self.onmessage = function(e) {
+        const { type, data, threshold } = e.data;
+        let result;
+        
+        if(type === 'chromaKey') {
+            result = chromaKey(data, threshold, data.type); // 传递type参数
+        } else if(type === 'invertColors') {
+            result = invertColors(data);
+        }
+        
+        self.postMessage({ type, result });
+    }
+
+    function chromaKey(layer, threshold, type) { // 新增type参数
+        const tempCanvas = new OffscreenCanvas(layer.width, layer.height);
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.putImageData(layer.imageData, 0, 0);
+        
+        const imageData = tempCtx.getImageData(0, 0, layer.width, layer.height);
+        const data = imageData.data;
+    
+        for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i+1];
+            const b = data[i+2];
+            
+            // 根据type动态判断目标颜色（关键修复）
+            const isTarget = type === 'black' 
+                ? (r < threshold && g < threshold && b < threshold)
+                : (r > 255 - threshold && g > 255 - threshold && b > 255 - threshold);
+                
+            if (isTarget) data[i+3] = 0; // 设置透明
+        }
+        
+        tempCtx.putImageData(imageData, 0, 0);
+        return tempCanvas.transferToImageBitmap();
+    }
+
+    function invertColors(layer) {
+        const tempCanvas = new OffscreenCanvas(layer.width, layer.height);
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.putImageData(layer.imageData, 0, 0);
+        
+        const imageData = tempCtx.getImageData(0, 0, layer.width, layer.height);
+        const data = imageData.data;
+    
+        // 使用位运算优化颜色反转 (255 - x 等价于 255 ^ x)
+        for (let i = 0; i < data.length; i += 4) {
+            data[i] = 255 ^ data[i];
+            data[i+1] = 255 ^ data[i+1];
+            data[i+2] = 255 ^ data[i+2];
+        }
+        
+        tempCtx.putImageData(imageData, 0, 0);
+        return tempCanvas.transferToImageBitmap();
+    }
+    `], { type: 'application/javascript' })));
+    
+    // 修改扣色处理逻辑（异步）
+    // 读取上传的图片（改为异步处理+加载提示）
+    input.addEventListener('change', async (e) => {
+    const startTime = Date.now(); // 记录开始时间
+    showLoading(); // 显示加载提示
+    const files = e.target.files;
+    const chromaKeyType = document.getElementById('chromaKeySelect').value;
+    
+    // 初始化进度
+    let processedFiles = 0;
+    const totalFiles = files.length;
+    document.querySelector('.loading-progress').textContent = `${processedFiles}/${totalFiles}`;
+    
+    for (const file of files) {
+        const img = new Image();
+        img.src = URL.createObjectURL(file);
+        await new Promise(resolve => {
+            img.onload = async () => {
+                // 获取图片数据
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = img.width;
+                tempCanvas.height = img.height;
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCtx.drawImage(img, 0, 0);
+                const imageData = tempCtx.getImageData(0, 0, img.width, img.height);
+
+                // 通过Worker处理扣色
+                imageWorker.postMessage({
+                    type: 'chromaKey',
+                    data: { imageData, width: img.width, height: img.height, type: chromaKeyType },
+                    threshold: parseInt(thresholdSelect.value)
+                }, [imageData.data.buffer]);
+
+                await new Promise(innerResolve => {
+                    imageWorker.onmessage = (e) => {
+                        if(e.data.type === 'chromaKey') {
+                            layers.push({ 
+                                image: e.data.result,
+                                width: img.width,
+                                height: img.height 
+                            });
+                            innerResolve();
+                        }
+                    };
+                });
+
+                URL.revokeObjectURL(img.src);
+                
+                // 更新进度
+                processedFiles++;
+                document.querySelector('.loading-progress').textContent = `${processedFiles}/${totalFiles}`;
+                
+                resolve();
+            };
+        });
+    }
+
+    document.querySelector('.controls').classList.add('active');
+    mergeLayers(); 
+    hideLoading(); // 隐藏加载提示
+    
+    // 更新颜色反转按钮状态
+    updateInvertColorButtonState();
+});
+
+    // 修改颜色反转逻辑（异步）
+    document.getElementById('invertColor').addEventListener('click', async () => {
+        // 修改按钮状态和文本
+        const invertBtn = document.getElementById('invertColor');
+        const originalText = invertBtn.textContent;
+        invertBtn.textContent = '处理中...';
+        invertBtn.disabled = true;
+        
+        showLoading();
+        
+        // 初始化进度
+        let processedLayers = 0;
+        const totalLayers = layers.length;
+        document.querySelector('.loading-progress').textContent = `${processedLayers}/${totalLayers}`;
+        
+        const newLayers = [];
+        for(const layer of layers) {
+            // 获取图层数据
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = layer.width;
+            tempCanvas.height = layer.height;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(layer.image, 0, 0);
+            const imageData = tempCtx.getImageData(0, 0, layer.width, layer.height);
+    
+            // 通过Worker处理颜色反转
+            imageWorker.postMessage({
+                type: 'invertColors',
+                data: { imageData, width: layer.width, height: layer.height }
+            }, [imageData.data.buffer]);
+    
+            await new Promise(resolve => {
+                imageWorker.onmessage = (e) => {
+                    if(e.data.type === 'invertColors') {
+                        newLayers.push({ ...layer, image: e.data.result });
+                        resolve();
+                    }
+                };
+            });
+            
+            // 更新进度
+            processedLayers++;
+            document.querySelector('.loading-progress').textContent = `${processedLayers}/${totalLayers}`;
+        }
+        layers = newLayers;
+        
+        // 恢复按钮状态和文本
+        invertBtn.textContent = originalText;
+        invertBtn.disabled = false;
+        
+        hideLoading();
+        mergeLayers();
+        
+        // 更新颜色反转按钮状态
+        updateInvertColorButtonState();
+    });
+
+    // 重新开始按钮事件
+    document.getElementById('restart').addEventListener('click', () => {
+        location.reload();
+    });
+
+    // 新增：下拉框值变化时重新处理图层
+    thresholdSelect.addEventListener('change', () => {
+        layers = layers.map(layer => {
+            const processedImage = chromaKey(layer, 'black'); // 保持原扣色类型
+            return { ...layer, image: processedImage };
+        });
+        mergeLayers(); // 重新合并显示
+    });
+
+    // 监听扣色类型选择框的变化事件（优化加载提示）
+    document.getElementById('chromaKeySelect').addEventListener('change', async () => {
+        showLoading(); // 显示加载提示
+        
+        // 初始化进度
+        let processedLayers = 0;
+        const totalLayers = layers.length;
+        document.querySelector('.loading-progress').textContent = `${processedLayers}/${totalLayers}`;
+        
+        const chromaKeyType = document.getElementById('chromaKeySelect').value;
+        const newLayers = [];
+        
+        for(const layer of layers) {
+            // 获取图层数据
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = layer.width;
+            tempCanvas.height = layer.height;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(layer.image, 0, 0);
+            const imageData = tempCtx.getImageData(0, 0, layer.width, layer.height);
+    
+            // 通过Worker重新处理扣色
+            imageWorker.postMessage({
+                type: 'chromaKey',
+                data: { imageData, width: layer.width, height: layer.height, type: chromaKeyType },
+                threshold: parseInt(thresholdSelect.value)
+            }, [imageData.data.buffer]);
+    
+            await new Promise(resolve => {
+                imageWorker.onmessage = (e) => {
+                    if(e.data.type === 'chromaKey') {
+                        newLayers.push({ ...layer, image: e.data.result });
+                        resolve();
+                    }
+                };
+            });
+            
+            // 更新进度
+            processedLayers++;
+            document.querySelector('.loading-progress').textContent = `${processedLayers}/${totalLayers}`;
+        }
+    
+        layers = newLayers;
+        mergeLayers(); 
+        hideLoading(); // 隐藏加载提示
+    });
+
+    // 阈值选择框变化时优化（添加加载提示）
+    thresholdSelect.addEventListener('change', async () => {
+        showLoading(); // 显示加载提示
+        
+        // 初始化进度
+        let processedLayers = 0;
+        const totalLayers = layers.length;
+        document.querySelector('.loading-progress').textContent = `${processedLayers}/${totalLayers}`;
+        
+        const newLayers = [];
+        const chromaKeyType = document.getElementById('chromaKeySelect').value;
+        
+        for(const layer of layers) {
+            // 获取图层数据
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = layer.width;
+            tempCanvas.height = layer.height;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(layer.image, 0, 0);
+            const imageData = tempCtx.getImageData(0, 0, layer.width, layer.height);
+    
+            // 通过Worker重新处理扣色（使用新阈值）
+            imageWorker.postMessage({
+                type: 'chromaKey',
+                data: { imageData, width: layer.width, height: layer.height, type: chromaKeyType },
+                threshold: parseInt(thresholdSelect.value)
+            }, [imageData.data.buffer]);
+    
+            await new Promise(resolve => {
+                imageWorker.onmessage = (e) => {
+                    if(e.data.type === 'chromaKey') {
+                        newLayers.push({ ...layer, image: e.data.result });
+                        resolve();
+                    }
+                };
+            });
+            
+            // 更新进度
+            processedLayers++;
+            document.querySelector('.loading-progress').textContent = `${processedLayers}/${totalLayers}`;
+        }
+    
+        layers = newLayers;
+        mergeLayers(); 
+        hideLoading(); // 隐藏加载提示
+    });
+</script>
+
+    <!-- 新增加载提示（含文字） -->
+    <div class="loading-mask">
+        <div class="loading-spinner"></div>
+        <span class="loading-text">处理中...</span>
+        <span class="loading-progress"></span>
+    </div>
+    
+    <!-- 消息提醒框 -->
+    <div id="messageBox" class="message-box">
+        <span id="messageText"></span>
+    </div>
+    
+    <!-- 底部GitHub链接 -->
+    <footer style="text-align: center; padding: 20px; margin-top: 20px;">
+        <a href="https://github.com/FQkun/pinhaotu" target="_blank">GitHub地址</a>
+    </footer>
+</body>
+
+<script>
+    // 显示加载提示（修改后）
+    function showLoading() {
+        document.querySelector('.loading-mask').style.display = 'flex';
+        const uploadLabel = document.querySelector('.upload-area label');
+        // 替换按钮文本
+        uploadLabel.textContent = '重新开始';
+        // 移除与文件输入的绑定
+        uploadLabel.removeAttribute('for');
+        // 绑定点击事件为刷新页面
+        uploadLabel.addEventListener('click', () => location.reload());
+    }
+    // 隐藏加载提示
+    function hideLoading() {
+        document.querySelector('.loading-mask').style.display = 'none';
+    }
+    
+    // 消息提醒函数
+    function showMessage(text, isError = false) {
+        const messageBox = document.getElementById('messageBox');
+        const messageText = document.getElementById('messageText');
+        
+        // 设置消息文本
+        messageText.textContent = text;
+        
+        // 设置消息类型样式
+        if (isError) {
+            messageBox.classList.add('error');
+        } else {
+            messageBox.classList.remove('error');
+        }
+        
+        // 显示消息框
+        messageBox.classList.add('show');
+        
+        // 3秒后自动隐藏消息框
+        setTimeout(() => {
+            messageBox.classList.remove('show');
+        }, 3000);
+    }
+    
+    // 下载合成图片 (优化版本 - 使用 Promise.all 并行处理)
+    async function downloadImage() {
+        const startTime = Date.now(); // 记录开始时间
+        const canvas = document.getElementById('resultCanvas');
+        const link = document.createElement('a');
+        link.download = '合成图片.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        
+        // 计算处理时间并显示提示
+        const endTime = Date.now();
+        const processTime = ((endTime - startTime) / 1000).toFixed(2);
+        showMessage(`图片下载完成 [${processTime}秒]`);
+}
+
+// 汉堡菜单交互
+const navToggle = document.getElementById('navToggle');
+const navMenu = document.getElementById('navMenu');
+
+navToggle.addEventListener('click', () => {
+    navMenu.classList.toggle('active');
+    navToggle.classList.toggle('active');
+});
+
+// 点击菜单项后关闭菜单
+const navLinks = document.querySelectorAll('.nav-menu a');
+navLinks.forEach(link => {
+    link.addEventListener('click', () => {
+        navMenu.classList.remove('active');
+        navToggle.classList.remove('active');
+    });
+});
+    
+    // 添加下载按钮事件监听器
+    document.getElementById('downloadBtn').addEventListener('click', downloadImage);
+    
+    // 初始化颜色反转按钮状态
+    updateInvertColorButtonState();
+</script>
+
+</body>

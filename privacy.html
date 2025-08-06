@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="max-age=86400">
+    <title>拼好图-隐私说明</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* 移除了隐私说明页面特有的样式，使用与其他页面相同的样式 */
+    </style>
+</head>
+<body class="privacy-page">
+    <!-- 顶部导航栏 -->
+    <div class="nav-links">
+        <div class="nav-toggle" id="navToggle">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+        <div class="nav-menu" id="navMenu">
+            <a href="index.html">图片合成</a>
+            <a href="encrypt.html">图片加密</a>
+            <a href="privacy.html" class="active">隐私说明</a>
+            <a href="about.html">关于</a>
+        </div>
+    </div>
+    
+    <div class="container">
+        
+        <div class="layout-grid">
+            <!-- 左侧面板：目录区域 -->
+            <div class="left-panel">
+                <h2>目录</h2>
+                <ul id="toc-list">
+                    <!-- 目录将通过JavaScript动态生成 -->
+                </ul>
+            </div>
+            
+            <!-- 右侧面板：内容区域 -->
+            <div class="right-panel">
+                <div class="privacy-header"> 
+                    <h1>隐私说明</h1> 
+                    <div class="privacy-summary"> 
+                        <p class="summary-title"><strong>核心隐私承诺</strong></p> 
+                        <ul class="summary-list"> 
+                            <li>✅ 不收集任何用户数据（图片、设备信息、行为记录等）</li> 
+                            <li>✅ 所有操作仅在您的本地设备完成，数据不上传任何服务器</li> 
+                            <li>✅ 您完全拥有数据控制权，可随时清除本地临时数据</li> 
+                            <li>✅ 绝不会与第三方共享任何信息（因无数据可共享）</li> 
+                        </ul> 
+                    </div> 
+                </div> 
+
+                <!-- 引言部分：保持原文基调，微调表述更通俗 --> 
+                <p class="intro"> 
+                    隐私是人类最基本的人权之一，是每个人维护个人自由、尊严与自主的重要基石。 
+                    拼好图深刻理解并尊重这一权利，所有产品设计与功能开发都始终将保护您的隐私放在首位， 
+                    致力于为您打造安全、可靠的使用环境。以下详细说明您使用本应用时，与数据相关的各项处理情况。 
+                </p> 
+
+                <!-- 数据收集部分：优化结构，增加术语解释 --> 
+                <section class="privacy-section" id="data-collection"> 
+                    <h2 class="section-title">数据收集</h2> 
+                    <p> 
+                        拼好图是一款基于<strong>纯前端技术</strong>开发的网页应用（即所有操作仅在您的手机/电脑本地完成，不会向远程服务器发送任何数据）。 
+                        从您打开应用到完成所有操作的整个过程，所有功能运行与数据处理都仅在您的设备本地浏览器中进行，不会与任何服务器发生数据交互。 
+                    </p> 
+                    <p>我们秉持"不收集即是最好的保护"原则，绝不会以任何形式收集、记录或追踪您的信息，包括但不限于：</p> 
+                    <ul class="section-list"> 
+                        <li><strong>个人身份信息</strong>：姓名、手机号码、电子邮箱、身份证号码、家庭住址等可直接或间接识别您身份的信息；</li> 
+                        <li><strong>设备相关信息</strong>：设备型号、操作系统版本、浏览器类型、IP地址、网络类型等与设备相关的数据；</li> 
+                        <li><strong>图片相关信息</strong>：您上传的原始图片内容、图片元数据（如拍摄时间、地点等，仅存在于您的本地设备中）及处理后生成的图片；</li> 
+                        <li><strong>使用行为信息</strong>：使用频率、时长、操作步骤、点击的功能按钮、处理图片数量等与使用行为有关的数据。</li> 
+                    </ul> 
+                    <p>无论有意或无意，我们都不会设置任何机制获取上述信息，从技术层面杜绝了数据收集的可能性。</p> 
+                </section> 
+
+                <!-- 数据存储部分：增加操作指引，细化存储说明 --> 
+                <section class="privacy-section" id="data-storage"> 
+                    <h2 class="section-title">数据存储</h2> 
+                    <p> 
+                        您通过本应用进行的所有图片处理操作及相关数据，均只在您的本地设备（电脑、手机、平板电脑等）浏览器中存在， 
+                        不会以任何方式上传至我们的服务器或其他第三方服务器。 
+                    </p> 
+                    <p>关于本地存储的具体情况说明：</p> 
+                    <ul class="section-list"> 
+                        <li> 
+                            <strong>存储位置</strong>：处理图片过程中，为实现拼图状态临时保存、操作步骤记录等必要功能， 
+                            相关数据可能短暂存储在浏览器的<strong>内存或本地缓存</strong>中（如浏览器自带的"临时文件夹"）； 
+                        </li> 
+                        <li> 
+                            <strong>存储期限</strong>：这些临时数据仅为辅助您完成当前拼图任务而存在。若您未主动保存处理后的图片， 
+                            在关闭浏览器窗口、清理缓存或重启设备后，数据会自动删除，不会留下痕迹； 
+                        </li> 
+                        <li> 
+                            <strong>数据归属</strong>：所有本地存储的数据所有权归您所有，您可随时通过浏览器功能手动删除（操作指引： 
+                            打开浏览器设置 → 找到"隐私与安全" → 选择"清除浏览数据" → 勾选"缓存文件"并确认）。 
+                        </li> 
+                    </ul> 
+                </section> 
+
+                <!-- 数据使用部分：简化表述，强化核心逻辑 --> 
+                <section class="privacy-section" id="data-usage"> 
+                    <h2 class="section-title">数据使用</h2> 
+                    <p> 
+                        由于我们从不会收集您的任何数据，因此不存在"使用您的数据"的情况。 
+                        您上传的图片及各项操作，唯一目的是帮助您在本地设备上完成拼图需求，不会涉及任何超出此目的的使用场景。 
+                    </p> 
+                    <p> 
+                        我们不会将您的数据用于产品改进分析、用户行为研究、商业推广、广告投放等无关活动， 
+                        也不会对数据进行任何形式的加工、分析或挖掘。 
+                    </p> 
+                </section> 
+
+                <!-- 数据共享部分：保持简洁，强调技术保障 --> 
+                <section class="privacy-section" id="data-sharing"> 
+                    <h2 class="section-title">数据共享</h2> 
+                    <p> 
+                        我们明确承诺：不会与任何个人、公司、组织或其他主体共享、转让、披露您的任何信息。 
+                        这一承诺的基础是我们从未收集过您的任何数据，没有可用于共享的数据来源。 
+                    </p> 
+                    <p> 
+                        从技术架构来看，应用未设计任何数据传输接口或通道用于数据共享，从根本上杜绝了数据被共享的可能性。 
+                        您在应用内处理的所有信息，都将严格局限于您的本地设备，不会以任何形式流转到应用之外。 
+                    </p> 
+                </section> 
+
+                <!-- 数据安全部分：增加警示提示，优化建议结构 --> 
+                <section class="privacy-section" id="security"> 
+                    <h2 class="section-title">数据安全</h2> 
+                    <p class="security-note"> 
+                        <strong>⚠️ 重要提示：</strong>虽然应用设计确保了您的数据不会被收集和外传，但本地设备中的数据安全仍与您的设备设置及使用环境密切相关。 
+                    </p> 
+                    <p>为更好地保护您的本地数据安全，我们建议您：</p> 
+                    <ul class="section-list security-list"> 
+                        <li>定期更新浏览器至最新版本，获取最新安全防护功能；</li> 
+                        <li>开启设备安全防护（如设置开机密码、指纹/面部识别等）；</li> 
+                        <li>避免在公共设备或不安全网络环境下处理含敏感信息的图片；</li> 
+                        <li>养成定期清理浏览器缓存和本地数据的习惯，减少留存风险。</li> 
+                    </ul> 
+                </section> 
+
+                <!-- 用户控制权部分：强化用户主导性表述 --> 
+                <section class="privacy-section" id="user-control"> 
+                    <h2 class="section-title">用户控制权</h2> 
+                    <p> 
+                        使用拼好图过程中，您始终拥有对自己数据的完全控制权。您可以随时决定： 
+                    </p> 
+                    <ul class="section-list"> 
+                        <li>是否使用应用、是否上传图片进行处理；</li> 
+                        <li>何时停止使用应用并清除相关本地数据；</li> 
+                        <li>如何管理和处置自己的数据（无需担心被他人掌控）。</li> 
+                    </ul> 
+                    <p>所有与数据相关的决策都由您自主决定，我们不会以任何方式干涉。</p> 
+                </section> 
+
+                <!-- 隐私说明更新部分：补充生效规则和用户权利 --> 
+                <section class="privacy-section" id="policy-update"> 
+                    <h2 class="section-title">隐私说明更新</h2> 
+                    <p> 
+                        我们可能会根据法律法规变化、产品功能更新或隐私保护实践发展，对本隐私说明进行修订。 
+                        若有更新，会在应用内显著位置（如首页弹窗、设置页面公告等）提示更新内容，确保您及时了解变化。 
+                    </p> 
+
+                </section>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 页面加载完成后自动生成目录
+        document.addEventListener('DOMContentLoaded', function() {
+            // 获取所有.section-title标题
+            const headings = document.querySelectorAll('.section-title');
+            const tocList = document.getElementById('toc-list');
+            
+            // 为每个标题生成目录项
+            headings.forEach((heading, index) => {
+                // 如果标题没有id，则添加一个基于索引的id
+                if (!heading.id) {
+                    heading.id = 'section-' + index;
+                }
+                
+                // 创建目录项
+                const listItem = document.createElement('li');
+                const link = document.createElement('a');
+                
+                // 设置链接属性
+                link.href = '#' + heading.id;
+                link.textContent = heading.textContent;
+                
+                // 添加到目录列表
+                listItem.appendChild(link);
+                tocList.appendChild(listItem);
+            });
+        });
+
+        // 汉堡菜单交互
+        const navToggle = document.getElementById('navToggle');
+        const navMenu = document.getElementById('navMenu');
+
+        navToggle.addEventListener('click', () => {
+            navMenu.classList.toggle('active');
+            navToggle.classList.toggle('active');
+        });
+
+        // 点击菜单项后关闭菜单
+        const navLinks = document.querySelectorAll('.nav-menu a');
+        navLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                navMenu.classList.remove('active');
+                navToggle.classList.remove('active');
+            });
+        });
+    </script>
+    
+    <!-- 底部GitHub链接 -->
+    <footer style="text-align: center; padding: 20px; margin-top: 20px;">
+        <a href="https://github.com/FQkun/pinhaotu" target="_blank">GitHub地址</a>
+    </footer>
+</body>
+</html>

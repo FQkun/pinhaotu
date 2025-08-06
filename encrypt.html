@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="max-age=86400">
+    <title>拼好图-图片加密</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- 引入JSZip和FileSaver库 -->
+    <script src="js/jszip.min.js"></script>
+    <script src="js/FileSaver.min.js"></script>
+</head>
+<body>
+    <!-- 顶部导航栏 -->
+    <div class="nav-links">
+        <div class="nav-toggle" id="navToggle">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+        <div class="nav-menu" id="navMenu">
+            <a href="index.html">图片合成</a>
+            <a href="encrypt.html" class="active">图片加密</a>
+            <a href="privacy.html">隐私说明</a>
+            <a href="about.html">关于</a>
+        </div>
+    </div>
+    
+    <div class="container">
+        
+        <div class="layout-grid">
+            <!-- 左侧面板：上传和控制区域 -->
+            <div class="left-panel">
+                <!-- 上传区域 -->
+                 <h1>图片加密工具</h1>
+                <div class="upload-area">
+                    <input type="file" id="imageInput" accept="image/png, image/jpeg">
+                    <label for="imageInput" class="button">点击选择图片</label>
+                    <p class="drag-hint">或将图片拖拽至此区域</p>
+                </div>
+
+                <!-- 操作按钮 -->
+                <div class="controls">
+                    <div class="control-group">
+                        <label>
+                            <input type="checkbox" id="invertColorCheckbox" checked><span>应用颜色反转（二次加密）</span>
+                        </label>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>
+                            加密图片数量: <span id="numImagesValue">6</span>
+                        </label>
+                        <input type="range" id="numImagesSlider" min="2" max="100" value="6">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>
+                            加密强度: 
+                            <select id="encryptionStrength">
+                                <option value="smart">智能（根据图片尺寸自动调整）</option>
+                                <option value="strong">强（3像素块）</option>
+                                <option value="weakest">最弱（12像素块）</option>
+                                <option value="medium">中（6像素块）</option>
+                                <option value="weak">弱（9像素块）</option>
+                            </select>
+                        </label>
+                        <div class="hint">提示：像素块越小加密越强，但处理时间可能更长</div>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>
+                            底片颜色: 
+                            <select id="negativeColor">
+                                <option value="white">白色</option>
+                                <option value="black">黑色</option>
+                                <option value="transparent" selected>透明</option>
+                            </select>
+                        </label>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button id="processBtn" disabled class="button">加密图片</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧面板：展示区域 -->
+            <div class="right-panel">
+                <!-- 原图展示 -->
+                <div class="canvas-container">
+                    <h3>原图：</h3>
+                    <canvas id="originalCanvas"></canvas>
+                </div>
+
+                <!-- 加密图片展示 -->
+                <div class="canvas-container">
+                <h3>加密图片：</h3>
+                <div class="action-bar" style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                    <button id="downloadAllBtn" style="display: none;" class="button">下载所有加密图片</button>
+                    <div class="view-controls" style="display: none;">
+                        <button id="gridViewBtn" class="view-btn active" title="网格视图">网格视图</button>
+                        <button id="listViewBtn" class="view-btn" title="列表视图">列表视图</button>
+                    </div>
+                    <span id="imageCount" style="font-size: 14px; color: #666; display: none;">共 0 张图片</span>
+                </div>
+                <div class="grid-container" id="encryptedContainer">
+                    <!-- 加密图片将在这里生成 -->
+                </div>
+
+            </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加载提示（含文字） -->
+    <div class="loading-mask">
+        <div class="loading-spinner"></div>
+        <span class="loading-text">处理中...</span>
+    </div>
+
+    <script>
+        const input = document.getElementById('imageInput');
+        const processBtn = document.getElementById('processBtn');
+        const downloadAllBtn = document.getElementById('downloadAllBtn');
+        const originalCanvas = document.getElementById('originalCanvas');
+        const originalCtx = originalCanvas.getContext('2d');
+        const encryptedContainer = document.getElementById('encryptedContainer');
+        const numImagesSlider = document.getElementById('numImagesSlider');
+        const numImagesValue = document.getElementById('numImagesValue');
+        
+        let originalImage = null;
+        let encryptedCanvases = [];
+        
+        // 显示加载提示
+        function showLoading() {
+            document.querySelector('.loading-mask').style.display = 'flex';
+            const uploadLabel = document.querySelector('.upload-area label');
+            // 替换按钮文本
+            uploadLabel.textContent = '重新开始';
+            // 移除与文件输入的绑定
+            uploadLabel.removeAttribute('for');
+            // 绑定点击事件为刷新页面
+            uploadLabel.addEventListener('click', () => location.reload());
+        }
+
+        // 汉堡菜单交互
+        const navToggle = document.getElementById('navToggle');
+        const navMenu = document.getElementById('navMenu');
+
+        navToggle.addEventListener('click', () => {
+            navMenu.classList.toggle('active');
+            navToggle.classList.toggle('active');
+        });
+
+        // 点击菜单项后关闭菜单
+        const navLinks = document.querySelectorAll('.nav-menu a');
+        navLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                navMenu.classList.remove('active');
+                navToggle.classList.remove('active');
+            });
+        });
+        
+        // 隐藏加载提示
+        function hideLoading() {
+            document.querySelector('.loading-mask').style.display = 'none';
+        }
+        
+        // 更新滑块值显示
+        function updateNumImagesDisplay() {
+            const value = numImagesSlider.value;
+            numImagesValue.textContent = value;
+            document.getElementById('numImagesDescription').textContent = value;
+        }
+        
+        numImagesSlider.addEventListener('input', updateNumImagesDisplay);
+        // 也监听change事件确保值更新
+        numImagesSlider.addEventListener('change', updateNumImagesDisplay);
+        
+        // 上传图片
+        input.addEventListener('change', (e) => {
+            const files = e.target.files;
+            if (files.length > 0) {
+                handleFiles(files[0]);
+            }
+        });
+        
+        // 处理文件
+        function handleFiles(file) {
+            // 检查文件类型
+            const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg'];
+            if (!allowedTypes.includes(file.type)) {
+                showMessage('请选择PNG或JPG格式的图片文件！');
+                // 清空文件输入框
+                input.value = '';
+                return;
+            }
+            
+            // 释放之前的图片对象
+            if (originalImage) {
+                originalImage = null;
+            }
+            
+            const img = new Image();
+            const objectURL = URL.createObjectURL(file);
+            img.src = objectURL;
+            img.onload = () => {
+                originalImage = img;
+                
+                // 不限制图片最大尺寸
+                const displayWidth = img.width;
+                const displayHeight = img.height;
+                
+                // 显示原图
+                originalCanvas.width = displayWidth;
+                originalCanvas.height = displayHeight;
+                originalCtx.drawImage(img, 0, 0, displayWidth, displayHeight);
+                
+                // 启用处理按钮
+                processBtn.disabled = false;
+                
+                // 隐藏下载按钮
+                downloadAllBtn.style.display = 'none';
+                
+                // 显示选择成功提示
+                const uploadLabel = document.querySelector('.upload-area label');
+                uploadLabel.textContent = '选择成功';
+                uploadLabel.classList.add('success');
+                
+                setTimeout(() => {
+                    uploadLabel.textContent = '重新选择';
+                    uploadLabel.classList.remove('success');
+                }, 3000);
+                
+                // 释放对象URL
+                URL.revokeObjectURL(objectURL);
+            };
+        }
+        
+        // 拖拽上传功能
+        const uploadArea = document.querySelector('.upload-area');
+        
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFiles(files[0]);
+            }
+        });
+        
+        // 处理图片
+        processBtn.addEventListener('click', () => {
+            if (!originalImage) {
+                showMessage('请先上传图片！');
+                return;
+            }
+            
+            // 显示加载提示
+            showLoading();
+            
+            // 获取加密参数
+            const applyInvert = document.getElementById('invertColorCheckbox').checked;
+            
+            // 延迟执行加密处理，确保加载提示显示
+            setTimeout(() => {
+                try {
+                    // 执行加密处理
+                    encryptImage(applyInvert);
+                    
+                    // 显示下载按钮
+                    downloadAllBtn.style.display = 'block';
+                    
+                    // 隐藏加载提示
+                    hideLoading();
+                    
+                } catch (error) {
+                    console.error('加密过程中出错:', error);
+                    hideLoading();
+                    showMessage('加密过程中出现错误，请重试！');
+                }
+            }, 100);
+        });
+        
+        // 下载所有图片 - 使用更高效的方法
+        downloadAllBtn.addEventListener('click', async () => {
+            const startTime = Date.now(); // 记录开始时间
+            // 显示加载提示
+            showLoading();
+            // 更新加载文本为下载提示
+            document.querySelector('.loading-text').textContent = '正在下载...';
+            // 创建一个ZIP文件
+            const zip = new JSZip();
+            
+            // 并行处理所有canvas到blob的转换，但不清理资源
+            const blobPromises = encryptedCanvases.map((canvas, index) => {
+                return new Promise(resolve => {
+                    canvas.toBlob(blob => {
+                        zip.file(`encrypted_${index+1}.png`, blob);
+                        resolve();
+                    }, 'image/png');
+                });
+            });
+            
+            // 等待所有转换完成
+            await Promise.all(blobPromises);
+            
+            // 生成ZIP文件并下载
+            const content = await zip.generateAsync({ type: 'blob' });
+            saveAs(content, 'encrypted_images.zip');
+            // 隐藏加载提示
+            hideLoading();
+            // 恢复加载文本为默认值
+            document.querySelector('.loading-text').textContent = '处理中...';
+            
+            // 计算处理时间并显示提示
+            const endTime = Date.now();
+            const processTime = ((endTime - startTime) / 1000).toFixed(2);
+            showMessage(`图片下载完成 [${processTime}秒]`);
+        });
+        
+        // 视图切换功能
+        const gridViewBtn = document.getElementById('gridViewBtn');
+        const listViewBtn = document.getElementById('listViewBtn');
+        const imageCount = document.getElementById('imageCount');
+        const emptyState = document.getElementById('emptyState');
+        const viewControls = document.querySelector('.view-controls');
+        
+        // 切换视图模式
+        gridViewBtn?.addEventListener('click', () => {
+            encryptedContainer.classList.remove('preview-mode');
+            gridViewBtn.classList.add('active');
+            listViewBtn.classList.remove('active');
+        });
+        
+        listViewBtn?.addEventListener('click', () => {
+            encryptedContainer.classList.add('preview-mode');
+            listViewBtn.classList.add('active');
+            gridViewBtn.classList.remove('active');
+        });
+        
+        // 更新图片计数
+        function updateImageCount(count) {
+            imageCount.textContent = `共 ${count} 张图片`;
+            imageCount.style.display = count > 0 ? 'inline-block' : 'none';
+            viewControls.style.display = count > 0 ? 'flex' : 'none';
+        }
+        
+        // 移除了鼠标拖拽滚动效果，改用CSS滚动条
+        
+        // 消息提醒函数
+        function showMessage(text, isError = false) {
+            const messageBox = document.getElementById('messageBox');
+            const messageText = document.getElementById('messageText');
+            
+            // 设置消息文本
+            messageText.textContent = text;
+            
+            // 设置消息类型样式
+            if (isError) {
+                messageBox.classList.add('error');
+            } else {
+                messageBox.classList.remove('error');
+            }
+            
+            // 显示消息框
+            messageBox.classList.add('show');
+            
+            // 3秒后自动隐藏消息框
+            setTimeout(() => {
+                messageBox.classList.remove('show');
+            }, 3000);
+        }
+        
+        // 颜色反转函数 - 使用更高效的算法
+        function invertColors(imageData) {
+            const data = imageData.data;
+            // 使用位运算优化颜色反转
+            for (let i = 0; i < data.length; i += 4) {
+                data[i]     = 255 ^ data[i];     // R
+                data[i + 1] = 255 ^ data[i + 1]; // G
+                data[i + 2] = 255 ^ data[i + 2]; // B
+                // Alpha通道保持不变
+            }
+            return imageData;
+        }
+        
+        // 图片加密函数
+        function encryptImage(applyInvert = false, originalText) {
+            // 记录开始时间
+            const startTime = Date.now();
+            // 将开始时间存储到全局变量，以便在函数末尾计算处理时间
+            window.encryptionStartTime = startTime;
+            
+            // 清空之前的加密图片
+            encryptedContainer.innerHTML = '';
+            encryptedCanvases = [];
+            
+            // 获取加密图片数量
+            const numImages = parseInt(numImagesSlider.value);
+            
+            // 获取用户选择的底片颜色
+            const negativeColor = document.getElementById('negativeColor').value;
+            
+            // 根据选择设置背景色
+            let backgroundColor;
+            switch (negativeColor) {
+                case 'white':
+                    backgroundColor = '#FFFFFF';
+                    break;
+                case 'transparent':
+                    backgroundColor = 'transparent';
+                    break;
+                case 'black':
+                default:
+                    backgroundColor = '#000000';
+                    break;
+            }
+            
+            const width = originalImage.width;
+            const height = originalImage.height;
+            
+            // 创建指定数量的canvas
+            for (let i = 0; i < numImages; i++) {
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                
+                // 根据选择填充背景
+                if (backgroundColor === 'transparent') {
+                    // 对于透明背景，先清除画布
+                    ctx.clearRect(0, 0, width, height);
+                } else {
+                    // 对于有色背景，填充相应颜色
+                    ctx.fillStyle = backgroundColor;
+                    ctx.fillRect(0, 0, width, height);
+                }
+                
+                encryptedContainer.appendChild(canvas);
+                encryptedCanvases.push(canvas);
+            }
+            
+            // 获取原图像素数据
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = width;
+            tempCanvas.height = height;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(originalImage, 0, 0);
+            let imageData = tempCtx.getImageData(0, 0, width, height);
+            
+            // 清理临时canvas
+            tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+            
+            // 如果需要应用颜色反转
+            if (applyInvert) {
+                imageData = invertColors(imageData);
+            }
+            
+            // 获取用户选择的加密强度
+            const encryptionStrength = document.getElementById('encryptionStrength').value;
+            
+            // 定义每个区块的大小
+            let blockSize;
+            switch (encryptionStrength) {
+                case 'strong':
+                    blockSize = 3;
+                    break;
+                case 'medium':
+                    blockSize = 6;
+                    break;
+                case 'weak':
+                    blockSize = 9;
+                    break;
+                case 'weakest':
+                    blockSize = 12;
+                    break;
+                case 'smart':
+                default:
+                    // 根据图片尺寸自动调整
+                    // 100x100 像素的图片使用 1 像素块，200x200 像素的图片使用 2 像素块，以此类推
+                    const maxDimension = Math.max(width, height);
+                    blockSize = Math.max(1, Math.floor(maxDimension / 100));
+                    break;
+            }
+            
+            // 计算总区块数
+            const blocksPerRow = Math.ceil(width / blockSize);
+            const blocksPerCol = Math.ceil(height / blockSize);
+            const totalBlocks = blocksPerRow * blocksPerCol;
+            
+            const data = imageData.data;
+            
+            // 计算每个图片应显示的区块数，并处理余数
+            const baseBlocksPerImage = Math.floor(totalBlocks / numImages);
+            let remainingBlocks = totalBlocks % numImages;
+            
+            // 预先计算所有区块的位置
+            const blockPositions = new Array(totalBlocks);
+            for (let idx = 0; idx < totalBlocks; idx++) {
+                blockPositions[idx] = {
+                    x: (idx % blocksPerRow) * blockSize,
+                    y: Math.floor(idx / blocksPerRow) * blockSize
+                };
+            }
+            
+            // 创建一个包含所有区块索引的数组，并随机打乱
+            const blockIndices = Array.from({ length: totalBlocks }, (_, i) => i);
+            // 使用Fisher-Yates洗牌算法随机打乱数组
+            for (let i = blockIndices.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [blockIndices[i], blockIndices[j]] = [blockIndices[j], blockIndices[i]];
+            }
+            
+            // 为每个加密图片分配区块
+            let blockIndex = 0;
+            // 跟踪已分配的区块数量
+            let allocatedBlocks = 0;
+            for (let i = 0; i < numImages; i++) {
+                const canvas = encryptedCanvases[i];
+                const ctx = canvas.getContext('2d');
+                // 先获取已填充背景色的图像数据
+                const encryptedImageData = ctx.getImageData(0, 0, width, height);
+                const encryptedData = encryptedImageData.data;
+                
+                // 计算当前图片应显示的区块数（前remainingBlocks张图片多显示一个区块）
+                const blocksToShow = baseBlocksPerImage + (i < remainingBlocks ? 1 : 0);
+                
+                // 为当前图片分配区块
+                for (let j = 0; j < blocksToShow && blockIndex < totalBlocks; j++) {
+                    // 获取区块索引
+                    const idx = blockIndices[blockIndex++];
+                    allocatedBlocks++;
+                    
+                    // 更新进度显示
+                    document.querySelector('.loading-progress').textContent = `${allocatedBlocks}/${totalBlocks}`;
+                    
+                    // 获取区块在图像中的位置
+                    const blockX = blockPositions[idx].x;
+                    const blockY = blockPositions[idx].y;
+                    
+                    // 复制区块内的所有像素
+                    // 确保正确处理边界情况，避免像素丢失
+                    for (let y = 0; y < blockSize; y++) {
+                        const pixelY = blockY + y;
+                        // 检查Y坐标是否在图像范围内
+                        if (pixelY >= height) break;
+                        
+                        for (let x = 0; x < blockSize; x++) {
+                            const pixelX = blockX + x;
+                            // 检查X坐标是否在图像范围内
+                            if (pixelX >= width) break;
+                            
+                            const srcIndex = (pixelY * width + pixelX) * 4;
+                            const dstIndex = srcIndex;
+                            
+                            // 复制RGBA四个值
+                            encryptedData[dstIndex] = data[srcIndex];
+                            encryptedData[dstIndex + 1] = data[srcIndex + 1];
+                            encryptedData[dstIndex + 2] = data[srcIndex + 2];
+                            encryptedData[dstIndex + 3] = data[srcIndex + 3];
+                        }
+                    }
+                }
+                
+                // 将加密后的图像数据绘制到canvas上
+                ctx.putImageData(encryptedImageData, 0, 0);
+            }
+            
+            // 如果还有未分配的区块，将它们分配给最后一张图片
+            while (blockIndex < totalBlocks) {
+                const lastCanvas = encryptedCanvases[numImages - 1];
+                const lastCtx = lastCanvas.getContext('2d');
+                // 先获取已填充背景色的图像数据
+                const lastImageData = lastCtx.getImageData(0, 0, width, height);
+                const lastData = lastImageData.data;
+                
+                // 获取区块索引
+                const idx = blockIndices[blockIndex++];
+                allocatedBlocks++;
+                
+                // 更新进度显示
+                document.querySelector('.loading-progress').textContent = `${allocatedBlocks}/${totalBlocks}`;
+                
+                // 获取区块在图像中的位置
+                const blockX = blockPositions[idx].x;
+                const blockY = blockPositions[idx].y;
+                
+                // 复制区块内的所有像素
+                // 确保正确处理边界情况，避免像素丢失
+                for (let y = 0; y < blockSize; y++) {
+                    const pixelY = blockY + y;
+                    // 检查Y坐标是否在图像范围内
+                    if (pixelY >= height) break;
+                    
+                    for (let x = 0; x < blockSize; x++) {
+                        const pixelX = blockX + x;
+                        // 检查X坐标是否在图像范围内
+                        if (pixelX >= width) break;
+                        
+                        const srcIndex = (pixelY * width + pixelX) * 4;
+                        const dstIndex = srcIndex;
+                        
+                        // 复制RGBA四个值
+                        lastData[dstIndex] = data[srcIndex];
+                        lastData[dstIndex + 1] = data[srcIndex + 1];
+                        lastData[dstIndex + 2] = data[srcIndex + 2];
+                        lastData[dstIndex + 3] = data[srcIndex + 3];
+                    }
+                }
+                
+                // 将更新后的图像数据绘制到canvas上
+                lastCtx.putImageData(lastImageData, 0, 0);
+            }
+            
+            // 移除了重复设置window.encryptionStartTime的代码
+            
+            // 显示下载按钮和控制元素
+            downloadAllBtn.style.display = 'block';
+            updateImageCount(encryptedCanvases.length);
+            
+            // 隐藏加载提示
+            hideLoading();
+            
+            // 恢复按钮状态和文本
+            if (originalText) {
+                processBtn.textContent = originalText;
+                processBtn.disabled = false;
+            }
+            
+            // 计算处理时间并显示提示
+            const endTime = Date.now();
+            const processTime = ((endTime - window.encryptionStartTime) / 1000).toFixed(2);
+            showMessage(`加密完成，耗时 ${processTime} 秒`);
+        }
+    </script>
+    <!-- 新增加载提示（含文字） -->
+    <div class="loading-mask">
+        <div class="loading-spinner"></div>
+        <span class="loading-text">处理中...</span>
+        <span class="loading-progress"></span>
+    </div>
+    
+    <!-- 消息提醒框 -->
+    <div id="messageBox" class="message-box">
+        <span id="messageText"></span>
+    </div>
+
+    <!-- 阻止选中和鼠标右键 -->
+    <script src="js/protect.js"></script>
+    
+    <!-- 底部GitHub链接 -->
+    <footer style="text-align: center; padding: 20px; margin-top: 20px;">
+        <a href="https://github.com/FQkun/pinhaotu" target="_blank">GitHub地址</a>
+    </footer>
+</body>
+</html>
